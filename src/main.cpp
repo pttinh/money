@@ -937,32 +937,37 @@ int generateMTRandom(unsigned int s, int range)
     return dist(gen);
 }
 
+double ConvertBitsToDouble(unsigned int nBits){
+    int nShift = (nBits >> 24) & 0xff;
 
+    double dDiff =
+        (double)0x0000ffff / (double)(nBits & 0x00ffffff);
+
+    while (nShift < 29)
+    {
+        dDiff *= 256.0;
+        nShift++;
+    }
+    while (nShift > 29)
+    {
+        dDiff /= 256.0;
+        nShift--;
+    }
+
+    return dDiff;
+}
 
 static const int64 nMinSubsidy = 1 * COIN;
 static const int CUTOFF_HEIGHT = 100800;	// Height at the end of 5 weeks
 // miner's coin base reward based on nBits
-int64 GetProofOfWorkReward(int nHeight, int64 nFees, uint256 prevHash)
+int64 GetProofOfWorkReward(int nHeight, int64 nFees, int nBits)
 {
-	int64 nSubsidy = 100000 * COIN;
+    int64 nSubsidy = 50 * COIN;
+    double dDiff = ConvertBitsToDouble(nBits);
+    nSubsidy = (2222222.0 / (pow((dDiff+2600.0)/9.0,2.0)));
+    if (nSubsidy > 50) nSubsidy = 50;
+    if (nSubsidy < 10) nSubsidy = 10;
 
-	if(nHeight == 1)
-	{
-		nSubsidy = TAX_PERCENTAGE * CIRCULATION_MONEY;
-		return nSubsidy + nFees;
-	}
-	else if(nHeight > CUTOFF_HEIGHT)
-	{
-		return nMinSubsidy + nFees;
-	}
-
-	std::string cseed_str = prevHash.ToString().substr(14,7);
-	const char* cseed = cseed_str.c_str();
-	long seed = hex2long(cseed);
-	nSubsidy += generateMTRandom(seed, 800000) * COIN;
-
-	// Subsidy is cut in half every week or 20160 blocks, which will occur approximately every month
-	nSubsidy >>= (nHeight / 20160); 
     return nSubsidy + nFees;
 }
 
@@ -1679,7 +1684,7 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex, bool fJustCheck)
 		// printf("==> Got prevHash = %s\n", prevHash.ToString().c_str());
 	}
 
-	if (vtx[0].GetValueOut() > GetProofOfWorkReward(pindex->nHeight, nFees, prevHash))
+    if (vtx[0].GetValueOut() > GetProofOfWorkReward(pindex->nHeight, nFees, pindex->pprev->nBits))
 		return false;
 
     // Update block index on disk without changing it in memory.
@@ -4245,7 +4250,7 @@ CBlock* CreateNewBlock(CWallet* pwallet, bool fProofOfStake)
             printf("CreateNewBlock(): total size %"PRI64u"\n", nBlockSize);
 
         if (pblock->IsProofOfWork())
-            pblock->vtx[0].vout[0].nValue = GetProofOfWorkReward(pindexPrev->nHeight+1, nFees, pindexPrev->GetBlockHash());
+            pblock->vtx[0].vout[0].nValue = GetProofOfWorkReward(pindexPrev->nHeight+1, nFees, pindexPrev->nBits);
 
         // Fill in header
         pblock->hashPrevBlock  = pindexPrev->GetBlockHash();
