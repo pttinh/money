@@ -968,7 +968,7 @@ int64 GetProofOfWorkReward(int nHeight, int64 nFees, int nBits)
     if (nSubsidy > 50) nSubsidy = 50;
     if (nSubsidy < 10) nSubsidy = 10;
 
-    return nSubsidy + nFees;
+    return nSubsidy * COIN + nFees;
 }
 
 // miner's coin stake reward based on nBits and coin age spent (coin-days)
